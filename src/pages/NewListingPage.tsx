@@ -163,21 +163,22 @@ export default function NewListingPage() {
       })
 
       if (error) {
-        toast.error('Failed to create listing')
-        console.error(error)
+        toast.error(`Failed to create listing: ${error.message}`)
+        console.error('Supabase error:', error)
       } else {
         toast.success('Listing created successfully!')
         navigate('/dashboard')
       }
     } catch (error) {
-      toast.error('Failed to create listing')
-      console.error(error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to create listing: ${errorMessage}`)
+      console.error('Create listing error:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -228,32 +229,62 @@ export default function NewListingPage() {
               <label htmlFor="fruitType" className="block text-sm font-medium text-gray-700 mb-2">
                 Fruit Type
               </label>
-              <input
+              <select
                 id="fruitType"
                 name="fruitType"
-                type="text"
-                placeholder="e.g., Oranges, Apples, Lemons"
                 value={formData.fruitType}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select a fruit type</option>
+                <option value="Oranges">🍊 Oranges</option>
+                <option value="Apples">🍎 Apples</option>
+                <option value="Lemons">🍋 Lemons</option>
+                <option value="Limes">🟢 Limes</option>
+                <option value="Grapefruits">🟡 Grapefruits</option>
+                <option value="Avocados">🥑 Avocados</option>
+                <option value="Peaches">🍑 Peaches</option>
+                <option value="Pears">🍐 Pears</option>
+                <option value="Plums">🟣 Plums</option>
+                <option value="Cherries">🍒 Cherries</option>
+                <option value="Strawberries">🍓 Strawberries</option>
+                <option value="Blueberries">🫐 Blueberries</option>
+                <option value="Figs">🟤 Figs</option>
+                <option value="Pomegranates">🟥 Pomegranates</option>
+                <option value="Guavas">🟢 Guavas</option>
+                <option value="Mangoes">🥭 Mangoes</option>
+                <option value="Persimmons">🟠 Persimmons</option>
+                <option value="Other">🍇 Other</option>
+              </select>
             </div>
 
             <div>
               <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-2">
                 Quantity
               </label>
-              <input
+              <select
                 id="quantity"
                 name="quantity"
-                type="text"
-                placeholder="e.g., 50 lbs, A few bags, About 20 fruits"
                 value={formData.quantity}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select quantity</option>
+                <option value="A few (1-5 fruits)">A few (1-5 fruits)</option>
+                <option value="A handful (5-10 fruits)">A handful (5-10 fruits)</option>
+                <option value="A small bag (10-20 fruits)">A small bag (10-20 fruits)</option>
+                <option value="A large bag (20-50 fruits)">A large bag (20-50 fruits)</option>
+                <option value="A basket (50-100 fruits)">A basket (50-100 fruits)</option>
+                <option value="Multiple baskets (100+ fruits)">Multiple baskets (100+ fruits)</option>
+                <option value="About 5 lbs">About 5 lbs</option>
+                <option value="About 10 lbs">About 10 lbs</option>
+                <option value="About 25 lbs">About 25 lbs</option>
+                <option value="About 50 lbs">About 50 lbs</option>
+                <option value="About 100 lbs">About 100 lbs</option>
+                <option value="More than 100 lbs">More than 100 lbs</option>
+              </select>
             </div>
 
             <div>

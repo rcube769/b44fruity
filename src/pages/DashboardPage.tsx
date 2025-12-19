@@ -91,9 +91,6 @@ export default function DashboardPage() {
           state,
           full_address,
           user_id
-        ),
-        requester:users(
-          email
         )
       `)
       .eq('listings.user_id', user.id)
@@ -277,7 +274,7 @@ export default function DashboardPage() {
                         <span className="text-3xl">🍊</span>
                         <div>
                           <h3 className="text-xl font-bold text-gray-900">{request.listing?.fruit_type}</h3>
-                          <p className="text-sm text-gray-600">Request from: {request.requester?.email || 'Unknown user'}</p>
+                          <p className="text-sm text-gray-600">📍 {request.listing?.city}, {request.listing?.state}</p>
                         </div>
                       </div>
                       {getStatusBadge(request.status)}

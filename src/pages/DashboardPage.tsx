@@ -8,9 +8,10 @@ import toast from 'react-hot-toast'
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'listings' | 'requests'>('listings')
+  const [activeTab, setActiveTab] = useState<'listings' | 'requests' | 'incoming'>('listings')
   const [myListings, setMyListings] = useState<Listing[]>([])
   const [myRequests, setMyRequests] = useState<PickupRequest[]>([])
+  const [incomingRequests, setIncomingRequests] = useState<PickupRequest[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -21,8 +22,10 @@ export default function DashboardPage() {
 
     if (activeTab === 'listings') {
       fetchMyListings()
-    } else {
+    } else if (activeTab === 'requests') {
       fetchMyRequests()
+    } else {
+      fetchIncomingRequests()
     }
   }, [user, activeTab, navigate])
 
@@ -72,6 +75,39 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
+  const fetchIncomingRequests = async () => {
+    if (!user) return
+    setLoading(true)
+
+    const { data, error } = await supabase
+      .from('pickup_requests')
+      .select(`
+        *,
+        listing:listings!inner(
+          id,
+          fruit_type,
+          quantity,
+          city,
+          state,
+          full_address,
+          user_id
+        ),
+        requester:users(
+          email
+        )
+      `)
+      .eq('listings.user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching incoming requests:', error)
+      toast.error('Failed to load incoming requests')
+    } else {
+      setIncomingRequests(data || [])
+    }
+    setLoading(false)
+  }
+
   const deleteListing = async (id: string) => {
     if (!confirm('Are you sure you want to delete this listing?')) return
 
@@ -85,6 +121,38 @@ export default function DashboardPage() {
     } else {
       toast.success('Listing deleted')
       fetchMyListings()
+    }
+  }
+
+  const acceptRequest = async (requestId: string) => {
+    const { error } = await supabase
+      .from('pickup_requests')
+      .update({ status: 'accepted' })
+      .eq('id', requestId)
+
+    if (error) {
+      toast.error('Failed to accept request')
+      console.error(error)
+    } else {
+      toast.success('Request accepted! The requester can now see your full address.')
+      fetchIncomingRequests()
+    }
+  }
+
+  const declineRequest = async (requestId: string) => {
+    if (!confirm('Are you sure you want to decline this request?')) return
+
+    const { error } = await supabase
+      .from('pickup_requests')
+      .update({ status: 'declined' })
+      .eq('id', requestId)
+
+    if (error) {
+      toast.error('Failed to decline request')
+      console.error(error)
+    } else {
+      toast.success('Request declined')
+      fetchIncomingRequests()
     }
   }
 
@@ -165,6 +233,16 @@ export default function DashboardPage() {
               🌳 My Listings
             </button>
             <button
+              onClick={() => setActiveTab('incoming')}
+              className={`flex-1 py-3 px-6 font-bold rounded-xl transition-all ${
+                activeTab === 'incoming'
+                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
+                  : 'text-gray-600 hover:bg-orange-50'
+              }`}
+            >
+              📥 Incoming Requests
+            </button>
+            <button
               onClick={() => setActiveTab('requests')}
               className={`flex-1 py-3 px-6 font-bold rounded-xl transition-all ${
                 activeTab === 'requests'
@@ -181,6 +259,77 @@ export default function DashboardPage() {
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+          </div>
+        ) : activeTab === 'incoming' ? (
+          <div>
+            {incomingRequests.length === 0 ? (
+              <div className="text-center py-16 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl">
+                <div className="text-6xl mb-4">📥</div>
+                <p className="text-gray-600 text-lg mb-6">No incoming requests yet</p>
+                <p className="text-sm text-gray-500">When someone requests fruit from your listings, they'll appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {incomingRequests.map((request) => (
+                  <div key={request.id} className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl p-6 transition-all duration-300 border-2 border-purple-100">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">🍊</span>
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900">{request.listing?.fruit_type}</h3>
+                          <p className="text-sm text-gray-600">Request from: {request.requester?.email || 'Unknown user'}</p>
+                        </div>
+                      </div>
+                      {getStatusBadge(request.status)}
+                    </div>
+                    <div className="space-y-2 mb-4">
+                      <p className="text-gray-700 flex items-center gap-2">
+                        <span className="font-semibold text-purple-600">📦 Quantity:</span> {request.listing?.quantity}
+                      </p>
+                      {request.message && (
+                        <p className="text-gray-700 flex items-start gap-2">
+                          <span className="font-semibold text-purple-600">💬 Message:</span>
+                          <span className="italic">"{request.message}"</span>
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        🕒 Requested on {new Date(request.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {request.status === 'pending' && (
+                      <div className="flex gap-3 mt-4">
+                        <button
+                          onClick={() => acceptRequest(request.id)}
+                          className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all"
+                        >
+                          ✅ Accept Request
+                        </button>
+                        <button
+                          onClick={() => declineRequest(request.id)}
+                          className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all"
+                        >
+                          ❌ Decline
+                        </button>
+                      </div>
+                    )}
+                    {request.status === 'accepted' && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                        <p className="text-green-900 font-semibold flex items-center gap-2">
+                          <span className="text-xl">✅</span> Request Accepted - Requester can see your full address
+                        </p>
+                      </div>
+                    )}
+                    {request.status === 'declined' && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-200 rounded-xl">
+                        <p className="text-red-900 font-semibold flex items-center gap-2">
+                          <span className="text-xl">❌</span> Request Declined
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : activeTab === 'listings' ? (
           <div>

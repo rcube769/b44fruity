@@ -4,10 +4,28 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import toast from 'react-hot-toast'
 
+interface AddressSuggestion {
+  display_name: string
+  lat: string
+  lon: string
+  address: {
+    road?: string
+    house_number?: string
+    city?: string
+    town?: string
+    village?: string
+    state?: string
+    postcode?: string
+  }
+}
+
 export default function NewListingPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [gettingLocation, setGettingLocation] = useState(false)
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [formData, setFormData] = useState({
     fruitType: '',
     quantity: '',
@@ -18,6 +36,66 @@ export default function NewListingPage() {
     availableStart: '',
     availableEnd: '',
   })
+
+  const getMyLocation = async () => {
+    setGettingLocation(true)
+    try {
+      if (!navigator.geolocation) {
+        toast.error('Geolocation is not supported by your browser')
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords
+
+          // Reverse geocode to get address suggestions
+          const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
+
+          try {
+            await fetch(url, {
+              headers: { 'User-Agent': 'FruityApp/1.0' },
+            })
+
+            // Then search for nearby addresses
+            const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&limit=3`
+            const searchResponse = await fetch(searchUrl, {
+              headers: { 'User-Agent': 'FruityApp/1.0' },
+            })
+            const suggestions = await searchResponse.json()
+
+            setAddressSuggestions(suggestions)
+            setShowSuggestions(true)
+            toast.success('Found your location! Select an address below.')
+          } catch (error) {
+            toast.error('Failed to get address suggestions')
+          }
+        },
+        (error) => {
+          toast.error('Unable to get your location. Please enable location services.')
+          console.error(error)
+        }
+      )
+    } finally {
+      setGettingLocation(false)
+    }
+  }
+
+  const selectAddress = (suggestion: AddressSuggestion) => {
+    const addr = suggestion.address
+    const street = addr.house_number && addr.road
+      ? `${addr.house_number} ${addr.road}`
+      : addr.road || ''
+
+    setFormData({
+      ...formData,
+      address: street,
+      city: addr.city || addr.town || addr.village || '',
+      state: addr.state || '',
+    })
+    setShowSuggestions(false)
+    toast.success('Address selected!')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -176,9 +254,49 @@ export default function NewListingPage() {
             </div>
 
             <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                Street Address
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                  Street Address
+                </label>
+                <button
+                  type="button"
+                  onClick={getMyLocation}
+                  disabled={gettingLocation}
+                  className="text-sm bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md transition-all disabled:opacity-50"
+                >
+                  {gettingLocation ? '📍 Getting location...' : '📍 Use My Location'}
+                </button>
+              </div>
+
+              {/* Address Suggestions */}
+              {showSuggestions && addressSuggestions.length > 0 && (
+                <div className="mb-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-lg">
+                  <p className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                    <span className="text-xl">📍</span>
+                    Select your address:
+                  </p>
+                  <div className="space-y-2">
+                    {addressSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => selectAddress(suggestion)}
+                        className="w-full text-left p-3 bg-white hover:bg-blue-50 border-2 border-blue-100 hover:border-blue-300 rounded-lg transition-all shadow-sm hover:shadow-md"
+                      >
+                        <p className="font-semibold text-gray-900">{suggestion.display_name}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(false)}
+                    className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    ✕ Close suggestions
+                  </button>
+                </div>
+              )}
+
               <input
                 id="address"
                 name="address"
@@ -187,7 +305,7 @@ export default function NewListingPage() {
                 value={formData.address}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
               />
             </div>
 

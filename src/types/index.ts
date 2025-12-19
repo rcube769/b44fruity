@@ -3,6 +3,8 @@ export interface User {
   email: string
   display_name?: string
   created_at?: string
+  thumbs_up_count?: number
+  thumbs_down_count?: number
 }
 
 export interface Listing {
@@ -28,6 +30,9 @@ export interface PickupRequest {
   requester_id: string
   status: 'pending' | 'accepted' | 'declined' | 'completed'
   message?: string
+  rating?: 'thumbs_up' | 'thumbs_down'
+  picked_up_quantity?: string
+  completed_at?: string
   created_at: string
   listing?: Listing
   requester?: User

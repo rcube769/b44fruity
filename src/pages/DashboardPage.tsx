@@ -13,6 +13,10 @@ export default function DashboardPage() {
   const [myRequests, setMyRequests] = useState<PickupRequest[]>([])
   const [incomingRequests, setIncomingRequests] = useState<PickupRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [completingRequest, setCompletingRequest] = useState<PickupRequest | null>(null)
+  const [pickedQuantity, setPickedQuantity] = useState('')
+  const [rating, setRating] = useState<'thumbs_up' | 'thumbs_down' | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -150,6 +154,81 @@ export default function DashboardPage() {
     } else {
       toast.success('Request declined')
       fetchIncomingRequests()
+    }
+  }
+
+  const openCompleteModal = (request: PickupRequest) => {
+    setCompletingRequest(request)
+    setPickedQuantity('')
+    setRating(null)
+  }
+
+  const closeCompleteModal = () => {
+    setCompletingRequest(null)
+    setPickedQuantity('')
+    setRating(null)
+  }
+
+  const completePickup = async () => {
+    if (!completingRequest || !rating || !pickedQuantity.trim()) {
+      toast.error('Please provide quantity picked and rating')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      // Update the pickup request
+      const { error: requestError } = await supabase
+        .from('pickup_requests')
+        .update({
+          status: 'completed',
+          rating: rating,
+          picked_up_quantity: pickedQuantity.trim(),
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', completingRequest.id)
+
+      if (requestError) {
+        toast.error('Failed to complete pickup')
+        console.error(requestError)
+        return
+      }
+
+      // Update the listing owner's rating
+      if (completingRequest.listing?.user_id) {
+        const { data: userData, error: fetchError } = await supabase
+          .from('users')
+          .select('thumbs_up_count, thumbs_down_count')
+          .eq('id', completingRequest.listing.user_id)
+          .single()
+
+        if (fetchError) {
+          console.error('Error fetching user ratings:', fetchError)
+        } else {
+          const updateField = rating === 'thumbs_up' ? 'thumbs_up_count' : 'thumbs_down_count'
+          const currentCount = rating === 'thumbs_up'
+            ? (userData.thumbs_up_count || 0)
+            : (userData.thumbs_down_count || 0)
+
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ [updateField]: currentCount + 1 })
+            .eq('id', completingRequest.listing.user_id)
+
+          if (updateError) {
+            console.error('Error updating user rating:', updateError)
+          }
+        }
+      }
+
+      toast.success(`Pickup completed! ${rating === 'thumbs_up' ? '👍' : '👎'} Rating submitted.`)
+      closeCompleteModal()
+      fetchMyRequests()
+    } catch (error) {
+      toast.error('Failed to complete pickup')
+      console.error(error)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -413,13 +492,40 @@ export default function DashboardPage() {
                       )}
                     </div>
                     {request.status === 'accepted' && request.listing?.full_address && (
-                      <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-md">
-                        <p className="font-bold text-green-900 mb-2 flex items-center gap-2">
-                          <span className="text-2xl">✅</span> Request Accepted!
+                      <div className="mt-4 space-y-3">
+                        <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-md">
+                          <p className="font-bold text-green-900 mb-2 flex items-center gap-2">
+                            <span className="text-2xl">✅</span> Request Accepted!
+                          </p>
+                          <p className="text-sm text-green-800 flex items-center gap-2">
+                            <strong>📍 Pickup Address:</strong> {request.listing.full_address}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => openCompleteModal(request)}
+                          className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all"
+                        >
+                          ✅ Mark as Completed
+                        </button>
+                      </div>
+                    )}
+                    {request.status === 'completed' && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl">
+                        <p className="font-bold text-purple-900 mb-2 flex items-center gap-2">
+                          <span className="text-2xl">🎉</span> Pickup Completed!
                         </p>
-                        <p className="text-sm text-green-800 flex items-center gap-2">
-                          <strong>📍 Pickup Address:</strong> {request.listing.full_address}
+                        <p className="text-sm text-purple-800">
+                          <strong>Picked up:</strong> {request.picked_up_quantity}
                         </p>
+                        <p className="text-sm text-purple-800 flex items-center gap-2 mt-1">
+                          <strong>Rating given:</strong>
+                          {request.rating === 'thumbs_up' ? '👍 Thumbs Up' : '👎 Thumbs Down'}
+                        </p>
+                        {request.completed_at && (
+                          <p className="text-xs text-purple-700 mt-2">
+                            Completed on {new Date(request.completed_at).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
                     )}
                     <p className="text-xs text-gray-500 mt-4 flex items-center gap-1">
@@ -432,6 +538,78 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Complete Pickup Modal */}
+      {completingRequest && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Complete Pickup</h2>
+            <p className="text-gray-600 mb-6">
+              Please provide details about your pickup of <strong>{completingRequest.listing?.fruit_type}</strong>
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  How much did you pick up?
+                </label>
+                <input
+                  type="text"
+                  value={pickedQuantity}
+                  onChange={(e) => setPickedQuantity(e.target.value)}
+                  placeholder="e.g., 5 lbs, 10 oranges, etc."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Rate your experience
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setRating('thumbs_up')}
+                    className={`flex-1 py-4 px-6 rounded-xl font-bold text-lg transition-all ${
+                      rating === 'thumbs_up'
+                        ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg scale-105'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    👍 Good
+                  </button>
+                  <button
+                    onClick={() => setRating('thumbs_down')}
+                    className={`flex-1 py-4 px-6 rounded-xl font-bold text-lg transition-all ${
+                      rating === 'thumbs_down'
+                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg scale-105'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    👎 Bad
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeCompleteModal}
+                disabled={submitting}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={completePickup}
+                disabled={submitting || !rating || !pickedQuantity.trim()}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Submitting...' : 'Submit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

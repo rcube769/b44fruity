@@ -49,26 +49,44 @@ export default function NewListingPage() {
         async (position) => {
           const { latitude, longitude } = position.coords
 
-          // Reverse geocode to get address suggestions
-          const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
-
           try {
-            await fetch(url, {
+            // First, reverse geocode to get the current location details
+            const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
+            const reverseResponse = await fetch(reverseUrl, {
               headers: { 'User-Agent': 'FruityApp/1.0' },
             })
+            const currentLocation = await reverseResponse.json()
 
-            // Then search for nearby addresses
-            const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&limit=3`
-            const searchResponse = await fetch(searchUrl, {
-              headers: { 'User-Agent': 'FruityApp/1.0' },
-            })
-            const suggestions = await searchResponse.json()
+            // Get the city and state from current location
+            const city = currentLocation.address.city || currentLocation.address.town || currentLocation.address.village || ''
+            const state = currentLocation.address.state || ''
+            const road = currentLocation.address.road || ''
 
-            setAddressSuggestions(suggestions)
-            setShowSuggestions(true)
-            toast.success('Found your location! Select an address below.')
+            if (city && state) {
+              // Search for nearby addresses in the same area
+              const searchQuery = road ? `${road}, ${city}, ${state}` : `${city}, ${state}`
+              const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&addressdetails=1&limit=3`
+              const searchResponse = await fetch(searchUrl, {
+                headers: { 'User-Agent': 'FruityApp/1.0' },
+              })
+              const suggestions = await searchResponse.json()
+
+              if (suggestions && suggestions.length > 0) {
+                setAddressSuggestions(suggestions)
+                setShowSuggestions(true)
+                toast.success('Found your location! Select an address below.')
+              } else {
+                // Fallback: use just the current location
+                setAddressSuggestions([currentLocation])
+                setShowSuggestions(true)
+                toast.success('Found your location! Select an address below.')
+              }
+            } else {
+              toast.error('Could not determine your location area')
+            }
           } catch (error) {
             toast.error('Failed to get address suggestions')
+            console.error(error)
           }
         },
         (error) => {

@@ -92,25 +92,25 @@ export default function MapPage() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 flex-shrink-0">
+      <header className="bg-gradient-to-r from-orange-500 to-orange-600 shadow-lg flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="text-3xl">🍊</span>
-              <h1 className="text-xl font-bold text-orange-600">Fruity</h1>
+            <Link to="/" className="flex items-center gap-2 group">
+              <span className="text-3xl group-hover:scale-110 transition-transform">🍊</span>
+              <h1 className="text-xl font-bold text-white drop-shadow-lg">Fruity Maps</h1>
             </Link>
             <nav className="flex items-center gap-4">
               {user ? (
                 <>
-                  <Link to="/dashboard" className="text-gray-700 hover:text-orange-600 font-medium">
-                    Dashboard
+                  <Link to="/dashboard" className="text-white hover:text-yellow-200 font-medium transition-colors">
+                    📊 Dashboard
                   </Link>
-                  <Link to="/messages" className="text-gray-700 hover:text-orange-600 font-medium">
-                    Messages
+                  <Link to="/messages" className="text-white hover:text-yellow-200 font-medium transition-colors">
+                    💬 Messages
                   </Link>
                 </>
               ) : (
-                <Link to="/login" className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
+                <Link to="/login" className="bg-white text-orange-600 hover:bg-yellow-50 font-semibold px-5 py-2.5 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5">
                   Sign In
                 </Link>
               )}
@@ -159,45 +159,54 @@ export default function MapPage() {
 
         {/* Listing Detail Modal */}
         {selectedListing && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-2xl p-6 w-96 max-w-[90vw] z-[1000]">
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl p-6 w-96 max-w-[90vw] z-[1000] border-4 border-orange-200">
             <button
               onClick={() => setSelectedListing(null)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-full text-xl font-bold transition-all"
             >
               ×
             </button>
-            <div className="text-4xl mb-2">🍊</div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedListing.fruit_type}</h3>
-            <p className="text-gray-600 mb-2">
-              <strong>Quantity:</strong> {selectedListing.quantity}
-            </p>
-            {selectedListing.description && (
-              <p className="text-gray-600 mb-2">{selectedListing.description}</p>
-            )}
-            <p className="text-gray-600 mb-2">
-              <strong>Location:</strong> {selectedListing.city}, {selectedListing.state}
-            </p>
-            <p className="text-gray-600 mb-4">
-              <strong>Available:</strong> {new Date(selectedListing.available_start).toLocaleDateString()} -{' '}
-              {new Date(selectedListing.available_end).toLocaleDateString()}
-            </p>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="text-5xl">🍊</div>
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">{selectedListing.fruit_type}</h3>
+            </div>
+            <div className="space-y-2 mb-4">
+              <p className="text-gray-700 flex items-center gap-2">
+                <span className="font-bold text-orange-600">📦 Quantity:</span> {selectedListing.quantity}
+              </p>
+              {selectedListing.description && (
+                <p className="text-gray-700 flex items-start gap-2">
+                  <span className="font-bold text-orange-600">📝</span>
+                  <span className="italic">"{selectedListing.description}"</span>
+                </p>
+              )}
+              <p className="text-gray-700 flex items-center gap-2">
+                <span className="font-bold text-orange-600">📍 Location:</span> {selectedListing.city}, {selectedListing.state}
+              </p>
+              <p className="text-gray-700 flex items-center gap-2">
+                <span className="font-bold text-orange-600">📅 Available:</span>
+                <span className="text-sm">{new Date(selectedListing.available_start).toLocaleDateString()} - {new Date(selectedListing.available_end).toLocaleDateString()}</span>
+              </p>
+            </div>
             {user ? (
               selectedListing.user_id === user.id ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                  This is your listing
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4 text-center">
+                  <p className="font-bold text-blue-800 flex items-center justify-center gap-2">
+                    <span className="text-2xl">✨</span> This is your listing
+                  </p>
                 </div>
               ) : (
                 <button
                   onClick={() => requestPickup(selectedListing.id)}
-                  className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
                 >
-                  Request Pickup
+                  🤝 Request Pickup
                 </button>
               )
             ) : (
               <Link
                 to="/login"
-                className="block w-full text-center bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                className="block w-full text-center bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
               >
                 Sign In to Request
               </Link>

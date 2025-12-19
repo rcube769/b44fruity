@@ -43,7 +43,13 @@ export default function MapPage() {
   const fetchListings = async () => {
     const { data, error } = await supabase
       .from('listings')
-      .select('*')
+      .select(`
+        *,
+        user:users(
+          thumbs_up_count,
+          thumbs_down_count
+        )
+      `)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
 
@@ -187,6 +193,27 @@ export default function MapPage() {
                 <span className="font-bold text-orange-600">📅 Available:</span>
                 <span className="text-sm">{new Date(selectedListing.available_start).toLocaleDateString()} - {new Date(selectedListing.available_end).toLocaleDateString()}</span>
               </p>
+              {selectedListing.user && (selectedListing.user.thumbs_up_count || selectedListing.user.thumbs_down_count) ? (
+                <div className="flex items-center gap-3 pt-2 border-t border-gray-200 mt-2">
+                  <span className="font-bold text-gray-700">Owner Rating:</span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-green-600 font-semibold">
+                      👍 {selectedListing.user.thumbs_up_count || 0}
+                    </span>
+                    <span className="flex items-center gap-1 text-red-600 font-semibold">
+                      👎 {selectedListing.user.thumbs_down_count || 0}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      ({Math.round(((selectedListing.user.thumbs_up_count || 0) / ((selectedListing.user.thumbs_up_count || 0) + (selectedListing.user.thumbs_down_count || 0))) * 100) || 0}% positive)
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-200 mt-2">
+                  <span className="font-bold text-gray-700">Owner Rating:</span>
+                  <span className="text-sm text-gray-500">No ratings yet</span>
+                </div>
+              )}
             </div>
             {user ? (
               selectedListing.user_id === user.id ? (

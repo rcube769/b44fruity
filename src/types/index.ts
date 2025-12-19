@@ -22,6 +22,10 @@ export interface Listing {
   available_end: string
   status: 'active' | 'completed' | 'cancelled'
   created_at: string
+  user?: {
+    thumbs_up_count?: number
+    thumbs_down_count?: number
+  }
 }
 
 export interface PickupRequest {

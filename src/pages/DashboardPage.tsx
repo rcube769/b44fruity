@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [pickedQuantity, setPickedQuantity] = useState('')
   const [rating, setRating] = useState<'thumbs_up' | 'thumbs_down' | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [userRatings, setUserRatings] = useState<{ thumbs_up_count: number; thumbs_down_count: number }>({ thumbs_up_count: 0, thumbs_down_count: 0 })
 
   useEffect(() => {
     if (!user) {
@@ -36,6 +37,17 @@ export default function DashboardPage() {
   const fetchMyListings = async () => {
     if (!user) return
     setLoading(true)
+
+    // Fetch user ratings
+    const { data: userData } = await supabase
+      .from('users')
+      .select('thumbs_up_count, thumbs_down_count')
+      .eq('id', user.id)
+      .single()
+
+    if (userData) {
+      setUserRatings(userData)
+    }
 
     const { data, error } = await supabase
       .from('listings')
@@ -292,7 +304,30 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8 bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent mb-2">Dashboard</h1>
-          <p className="text-gray-600 text-lg">Welcome back, <span className="font-semibold text-orange-600">{user.email}</span>! 🎉</p>
+          <p className="text-gray-600 text-lg mb-4">Welcome back, <span className="font-semibold text-orange-600">{user.email}</span>! 🎉</p>
+
+          {/* User Rating Display */}
+          {(userRatings.thumbs_up_count || userRatings.thumbs_down_count) ? (
+            <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+              <span className="font-bold text-gray-700">Your Rating:</span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 text-green-600 font-semibold">
+                  👍 {userRatings.thumbs_up_count || 0}
+                </span>
+                <span className="flex items-center gap-1 text-red-600 font-semibold">
+                  👎 {userRatings.thumbs_down_count || 0}
+                </span>
+                <span className="text-sm text-gray-500">
+                  ({Math.round(((userRatings.thumbs_up_count || 0) / ((userRatings.thumbs_up_count || 0) + (userRatings.thumbs_down_count || 0))) * 100) || 0}% positive)
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+              <span className="font-bold text-gray-700">Your Rating:</span>
+              <span className="text-sm text-gray-500">No ratings yet - complete some pickups to build your reputation!</span>
+            </div>
+          )}
         </div>
 
         {/* Tabs */}

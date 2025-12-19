@@ -100,12 +100,7 @@ export default function MessagesPage() {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select(`
-          *,
-          sender:users(
-            email
-          )
-        `)
+        .select('*')
         .eq('pickup_request_id', requestId)
         .order('created_at', { ascending: true })
 
@@ -285,7 +280,7 @@ export default function MessagesPage() {
                       return (
                         <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in`}>
                           <div className="text-xs text-gray-600 mb-1 font-medium px-1">
-                            {isMe ? '👤 You' : `👥 ${msg.sender?.email || 'Unknown'}`}
+                            {isMe ? '👤 You' : '👥 Other User'}
                           </div>
                           <div className={`rounded-2xl p-4 max-w-[75%] shadow-md ${
                             isMe

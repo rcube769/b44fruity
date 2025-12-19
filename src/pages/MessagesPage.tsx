@@ -102,7 +102,7 @@ export default function MessagesPage() {
         .from('messages')
         .select(`
           *,
-          sender:users!messages_sender_id_fkey(
+          sender:users(
             email
           )
         `)

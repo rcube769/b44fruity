@@ -41,40 +41,18 @@ export async function predictExpirationDays(imageFile) {
           const prediction = model.predict(tensor)
           console.log('Prediction made:', prediction)
 
-          const probs = prediction.dataSync() // softmax probabilities
-          console.log('Probabilities:', probs)
+          const raw = prediction.dataSync()[0]
+          console.log('Raw model output:', raw)
 
           tensor.dispose()
           prediction.dispose()
 
-          // Find best class + confidence
-          let maxIdx = 0
-          for (let i = 1; i < probs.length; i++) {
-            if (probs[i] > probs[maxIdx]) maxIdx = i
-          }
+          // Scale raw output by 3 and clamp between 1 and 30 days
+          const days = Math.min(30, Math.max(1, Math.round(raw * 3)))
 
-          const confidence = probs[maxIdx]
-          console.log('Best class:', maxIdx, 'Confidence:', confidence)
+          console.log('Predicted days:', days)
 
-          // Base day ranges per class
-          const DAY_RANGES = {
-            0: [6, 9],   // Unripe (fresh)
-            1: [3, 5],   // Ripe
-            2: [0, 2],   // Rotten
-          }
-
-          const [minDays, maxDays] = DAY_RANGES[maxIdx]
-
-          // Interpolate days based on confidence
-          const days = minDays + confidence * (maxDays - minDays)
-          const roundedDays = Math.round(days)
-
-          console.log('Raw days:', days)
-          console.log('Rounded prediction:', roundedDays, 'days')
-          console.log('Confidence:', Math.round(confidence * 100) + '%')
-          console.log('Class:', maxIdx === 0 ? 'Unripe (fresh)' : maxIdx === 1 ? 'Ripe' : 'Rotten')
-
-          resolve(roundedDays)
+          resolve(days)
         } catch (error) {
           console.error('Prediction error:', error)
           reject(error)

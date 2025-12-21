@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import toast from 'react-hot-toast'
+import { predictExpirationDays } from '../utils/predict'
 
 interface AddressSuggestion {
   display_name: string
@@ -26,6 +27,10 @@ export default function NewListingPage() {
   const [gettingLocation, setGettingLocation] = useState(false)
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [fruitImage, setFruitImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [expirationDays, setExpirationDays] = useState<number | null>(null)
+  const [predicting, setPredicting] = useState(false)
   const [formData, setFormData] = useState({
     fruitType: '',
     quantity: '',
@@ -189,6 +194,25 @@ export default function NewListingPage() {
     })
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setFruitImage(file)
+    setImagePreview(URL.createObjectURL(file))
+    setPredicting(true)
+
+    try {
+      const days = await predictExpirationDays(file)
+      setExpirationDays(days)
+    } catch (error) {
+      console.error('Prediction error:', error)
+      toast.error('Failed to predict expiration')
+    } finally {
+      setPredicting(false)
+    }
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -304,6 +328,30 @@ export default function NewListingPage() {
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
+            </div>
+
+            <div>
+              <label htmlFor="fruitImage" className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Fruit Image (Optional)
+              </label>
+              <input
+                type="file"
+                id="fruitImage"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+              {imagePreview && (
+                <div className="mt-4">
+                  <img src={imagePreview} alt="Preview" className="w-48 h-48 object-cover rounded-lg" />
+                  {predicting && <p className="mt-2 text-sm text-gray-600">Analyzing...</p>}
+                  {expirationDays !== null && !predicting && (
+                    <p className="mt-2 text-sm font-semibold text-orange-600">
+                      Expires in {expirationDays} days
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

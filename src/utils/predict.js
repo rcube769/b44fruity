@@ -4,10 +4,10 @@ let model = null
 
 export async function loadModel() {
   if (!model) {
-    console.log('Loading layers model from /model.json...')
+    console.log('Loading graph model from /model.json...')
     try {
-      model = await tf.loadLayersModel('/model.json')
-      console.log('Layers model loaded successfully:', model)
+      model = await tf.loadGraphModel('/model.json')
+      console.log('Graph model loaded successfully:', model)
     } catch (error) {
       console.error('Error loading model:', error)
       throw error

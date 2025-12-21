@@ -4,10 +4,10 @@ let model = null
 
 export async function loadModel() {
   if (!model) {
-    console.log('Loading graph model from /model.json...')
+    console.log('Loading layers model from /model.json...')
     try {
-      model = await tf.loadGraphModel('/model.json')
-      console.log('Graph model loaded successfully:', model)
+      model = await tf.loadLayersModel('/model.json')
+      console.log('Layers model loaded successfully:', model)
     } catch (error) {
       console.error('Error loading model:', error)
       throw error
@@ -22,35 +22,69 @@ export async function predictExpirationDays(imageFile) {
     const model = await loadModel()
     console.log('Model loaded for prediction')
 
-    const img = await createImageBitmap(imageFile)
-    console.log('Image bitmap created:', img.width, 'x', img.height)
+    const img = new Image()
+    img.src = URL.createObjectURL(imageFile)
 
-    const canvas = document.createElement('canvas')
-    canvas.width = 224
-    canvas.height = 224
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(img, 0, 0, 224, 224)
-    console.log('Image drawn to canvas')
+    return new Promise((resolve, reject) => {
+      img.onload = async () => {
+        try {
+          console.log('Image loaded:', img.width, 'x', img.height)
 
-    const tensor = tf.browser.fromPixels(canvas)
-      .toFloat()
-      .div(127.5)
-      .sub(1)
-      .expandDims(0)
-    console.log('Tensor created with shape:', tensor.shape)
+          const tensor = tf.browser.fromPixels(img)
+            .resizeNearestNeighbor([224, 224])
+            .toFloat()
+            .div(127.5)
+            .sub(1)
+            .expandDims(0)
+          console.log('Tensor created with shape:', tensor.shape)
 
-    const prediction = model.predict(tensor)
-    console.log('Prediction made:', prediction)
+          const prediction = model.predict(tensor)
+          console.log('Prediction made:', prediction)
 
-    const days = (await prediction.data())[0]
-    console.log('Raw prediction value:', days)
+          const probs = prediction.dataSync() // softmax probabilities
+          console.log('Probabilities:', probs)
 
-    tensor.dispose()
-    prediction.dispose()
+          tensor.dispose()
+          prediction.dispose()
 
-    const rounded = Math.round(days)
-    console.log('Rounded prediction:', rounded, 'days')
-    return rounded
+          // Find best class + confidence
+          let maxIdx = 0
+          for (let i = 1; i < probs.length; i++) {
+            if (probs[i] > probs[maxIdx]) maxIdx = i
+          }
+
+          const confidence = probs[maxIdx]
+          console.log('Best class:', maxIdx, 'Confidence:', confidence)
+
+          // Base day ranges per class
+          const DAY_RANGES = {
+            0: [6, 9],   // Unripe (fresh)
+            1: [3, 5],   // Ripe
+            2: [0, 2],   // Rotten
+          }
+
+          const [minDays, maxDays] = DAY_RANGES[maxIdx]
+
+          // Interpolate days based on confidence
+          const days = minDays + confidence * (maxDays - minDays)
+          const roundedDays = Math.round(days)
+
+          console.log('Raw days:', days)
+          console.log('Rounded prediction:', roundedDays, 'days')
+          console.log('Confidence:', Math.round(confidence * 100) + '%')
+          console.log('Class:', maxIdx === 0 ? 'Unripe (fresh)' : maxIdx === 1 ? 'Ripe' : 'Rotten')
+
+          resolve(roundedDays)
+        } catch (error) {
+          console.error('Prediction error:', error)
+          reject(error)
+        }
+      }
+
+      img.onerror = () => {
+        reject(new Error('Failed to load image'))
+      }
+    })
   } catch (error) {
     console.error('Detailed prediction error:', error)
     throw error

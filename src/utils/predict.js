@@ -47,16 +47,25 @@ export async function predictExpirationDays(imageFile) {
           tensor.dispose()
           prediction.dispose()
 
-          // Nonlinear expansion (critical)
-          const expanded = Math.log(raw + 1e-6) * -1
+          // ---- Robust calibration ----
+          // These constants are chosen to stabilize tiny outputs
+          const MIN_RAW = 0.001
+          const MAX_RAW = 0.02
+          const MIN_DAYS = 2
+          const MAX_DAYS = 21
+
+          // Clamp raw value into expected range
+          const clipped = Math.min(MAX_RAW, Math.max(MIN_RAW, raw))
+
+          // Normalize to 0–1
+          const normalized = (clipped - MIN_RAW) / (MAX_RAW - MIN_RAW)
 
           // Map to days
-          const days = Math.min(
-            30,
-            Math.max(1, Math.round(expanded * 5))
+          const days = Math.round(
+            MIN_DAYS + normalized * (MAX_DAYS - MIN_DAYS)
           )
 
-          console.log({ raw, expanded, days })
+          console.log({ raw, clipped, normalized, days })
 
           resolve(days)
         } catch (error) {

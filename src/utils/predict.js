@@ -31,26 +31,23 @@ function mapToBucket(predValue) {
   const s = v / 0.015 // 0..1
   console.log('[mapToBucket] Freshness score s =', s)
 
-  // 4) Bucket + exact day mapping
-  if (s >= 0.60) {
-    // UNRIPE: exact values 9,10,11,12
-    // map s 0.60..1.00 -> 9..12
-    const t = (s - 0.60) / 0.40 // 0..1
-    const days = 9 + Math.round(t * 3) // 9..12
-    return { stage: 'Unripe', days: clamp(days, 9, 12) }
-  } else if (s >= 0.30) {
-    // RIPE: exact values 5..9
-    // map s 0.30..0.60 -> 5..9
-    const t = (s - 0.30) / 0.30 // 0..1
-    const days = 5 + Math.round(t * 4) // 5..9
-    return { stage: 'Ripe', days: clamp(days, 5, 9) }
+  // 4) Simple linear mapping to 1-12 days
+  // s = 0.0 → 1 day (most rotten)
+  // s = 1.0 → 12 days (most fresh)
+  const days = Math.round(1 + s * 11) // Maps 0..1 to 1..12
+
+  // Determine stage based on days
+  let stage
+  if (days >= 9) {
+    stage = 'Unripe'
+  } else if (days >= 4) {
+    stage = 'Ripe'
   } else {
-    // ROTTEN: exact values 1..3
-    // map s 0.00..0.30 -> 1..3
-    const t = s / 0.30 // 0..1
-    const days = 1 + Math.round(t * 2) // 1..3
-    return { stage: 'Rotten', days: clamp(days, 1, 3) }
+    stage = 'Rotten'
   }
+
+  console.log('[mapToBucket] Final days:', days, 'Stage:', stage)
+  return { stage, days: clamp(days, 1, 12) }
 }
 
 export async function predictExpirationDays(imageFile) {

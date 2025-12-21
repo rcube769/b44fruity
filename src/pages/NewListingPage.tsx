@@ -266,6 +266,7 @@ export default function NewListingPage() {
                 <option value="">Select a fruit type</option>
                 <option value="Oranges">🍊 Oranges</option>
                 <option value="Apples">🍎 Apples</option>
+                <option value="Bananas">🍌 Bananas</option>
                 <option value="Lemons">🍋 Lemons</option>
                 <option value="Limes">🟢 Limes</option>
                 <option value="Grapefruits">🟡 Grapefruits</option>

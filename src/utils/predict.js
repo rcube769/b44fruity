@@ -19,15 +19,15 @@ function clamp(x, lo, hi) {
 function mapToBucket(predValue) {
   // 1) Make prediction safe (handle NaN/inf/neg/huge)
   let v = Number(predValue)
-  if (!Number.isFinite(v)) v = 7
+  if (!Number.isFinite(v)) v = 0.005
 
-  // 2) Clamp to a reasonable shelf-life window
-  // (adjust if you want; this is just to stabilize)
-  v = clamp(v, 0, 20)
+  // 2) Clamp to expected model output range (very small values)
+  // Based on actual outputs: ~0 to ~0.01
+  v = clamp(v, 0, 0.01)
 
   // 3) Convert to a 0..1 "freshness-ish" score:
   // higher v => "more days left" => more unripe
-  const s = v / 20 // 0..1
+  const s = v / 0.01 // 0..1
 
   // 4) Bucket + exact day mapping
   if (s >= 0.60) {
@@ -85,8 +85,8 @@ export async function predictExpirationDays(imageFile) {
           console.log('===== PREDICTION DEBUG =====')
           console.log('RAW MODEL OUTPUT:', predValue)
           console.log('Normalized value (v):', Number(predValue))
-          console.log('Clamped value:', clamp(Number(predValue), 0, 20))
-          console.log('Freshness score (s):', clamp(Number(predValue), 0, 20) / 20)
+          console.log('Clamped value:', clamp(Number(predValue), 0, 0.01))
+          console.log('Freshness score (s):', clamp(Number(predValue), 0, 0.01) / 0.01)
           console.log('Stage:', result.stage)
           console.log('Days:', result.days)
           console.log('============================')

@@ -249,6 +249,15 @@ export default function DashboardPage() {
     navigate('/')
   }
 
+  const calculateDaysRemaining = (expirationDate: string | null | undefined): number | null => {
+    if (!expirationDate) return null
+    const now = new Date()
+    const expDate = new Date(expirationDate)
+    const diffTime = expDate.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       active: 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md',
@@ -474,6 +483,25 @@ export default function DashboardPage() {
                         <span className="font-semibold text-orange-600">📅 Available:</span>
                         <span className="text-sm">{new Date(listing.available_start).toLocaleDateString()} - {new Date(listing.available_end).toLocaleDateString()}</span>
                       </p>
+                      {listing.expiration_date && (() => {
+                        const daysRemaining = calculateDaysRemaining(listing.expiration_date)
+                        if (daysRemaining !== null) {
+                          return (
+                            <p className="text-gray-700 flex items-center gap-2">
+                              <span className="font-semibold text-orange-600">⏰ Freshness:</span>
+                              <span className={`text-sm font-bold ${
+                                daysRemaining <= 0 ? 'text-red-700' :
+                                daysRemaining <= 2 ? 'text-red-600' :
+                                daysRemaining <= 5 ? 'text-orange-600' :
+                                'text-green-600'
+                              }`}>
+                                {daysRemaining <= 0 ? 'Expired!' : daysRemaining === 1 ? '1 day left' : `${daysRemaining} days left`}
+                              </span>
+                            </p>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                     <button
                       onClick={() => deleteListing(listing.id)}

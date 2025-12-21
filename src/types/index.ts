@@ -20,6 +20,7 @@ export interface Listing {
   full_address?: string
   available_start: string
   available_end: string
+  expiration_date?: string
   status: 'active' | 'completed' | 'cancelled'
   created_at: string
   user?: {

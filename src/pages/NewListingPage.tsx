@@ -152,6 +152,14 @@ export default function NewListingPage() {
 
       const { lat, lon } = geocodeData[0]
 
+      // Calculate expiration date if prediction was made
+      let expirationDate = null
+      if (expirationDays !== null) {
+        const expDate = new Date()
+        expDate.setDate(expDate.getDate() + expirationDays)
+        expirationDate = expDate.toISOString()
+      }
+
       // Create listing
       const { error } = await supabase.from('listings').insert({
         user_id: user.id,
@@ -167,6 +175,7 @@ export default function NewListingPage() {
         full_address: `${formData.address}, ${formData.city}, ${formData.state}`,
         available_start: formData.availableStart,
         available_end: formData.availableEnd,
+        expiration_date: expirationDate,
         status: 'active',
       })
 

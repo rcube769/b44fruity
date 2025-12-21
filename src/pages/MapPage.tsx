@@ -40,6 +40,15 @@ export default function MapPage() {
     fetchListings()
   }, [])
 
+  const calculateDaysRemaining = (expirationDate: string | null | undefined): number | null => {
+    if (!expirationDate) return null
+    const now = new Date()
+    const expDate = new Date(expirationDate)
+    const diffTime = expDate.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
   const fetchListings = async () => {
     const { data, error } = await supabase
       .from('listings')
@@ -57,7 +66,21 @@ export default function MapPage() {
       toast.error('Failed to load listings')
       console.error(error)
     } else {
-      setListings(data || [])
+      // Filter out expired listings and auto-cancel them
+      const activeListings = (data || []).filter(listing => {
+        const daysRemaining = calculateDaysRemaining(listing.expiration_date)
+        if (daysRemaining !== null && daysRemaining <= 0) {
+          // Auto-cancel expired listing
+          supabase
+            .from('listings')
+            .update({ status: 'cancelled' })
+            .eq('id', listing.id)
+            .then(() => console.log(`Auto-cancelled expired listing ${listing.id}`))
+          return false
+        }
+        return true
+      })
+      setListings(activeListings)
     }
     setLoading(false)
   }
@@ -156,6 +179,21 @@ export default function MapPage() {
                     <p className="text-xs text-gray-500 mt-1">
                       {listing.city}, {listing.state}
                     </p>
+                    {listing.expiration_date && (() => {
+                      const daysRemaining = calculateDaysRemaining(listing.expiration_date)
+                      if (daysRemaining !== null) {
+                        return (
+                          <p className={`text-xs font-semibold mt-1 ${
+                            daysRemaining <= 2 ? 'text-red-600' :
+                            daysRemaining <= 5 ? 'text-orange-600' :
+                            'text-green-600'
+                          }`}>
+                            ⏰ {daysRemaining === 1 ? '1 day left' : `${daysRemaining} days left`}
+                          </p>
+                        )
+                      }
+                      return null
+                    })()}
                   </div>
                 </Popup>
               </Marker>
@@ -193,6 +231,24 @@ export default function MapPage() {
                 <span className="font-bold text-orange-600">📅 Available:</span>
                 <span className="text-sm">{new Date(selectedListing.available_start).toLocaleDateString()} - {new Date(selectedListing.available_end).toLocaleDateString()}</span>
               </p>
+              {selectedListing.expiration_date && (() => {
+                const daysRemaining = calculateDaysRemaining(selectedListing.expiration_date)
+                if (daysRemaining !== null) {
+                  return (
+                    <p className="text-gray-700 flex items-center gap-2">
+                      <span className="font-bold text-orange-600">⏰ Freshness:</span>
+                      <span className={`text-sm font-semibold ${
+                        daysRemaining <= 2 ? 'text-red-600' :
+                        daysRemaining <= 5 ? 'text-orange-600' :
+                        'text-green-600'
+                      }`}>
+                        {daysRemaining === 1 ? '1 day left' : `${daysRemaining} days left`}
+                      </span>
+                    </p>
+                  )
+                }
+                return null
+              })()}
               {selectedListing.user && (selectedListing.user.thumbs_up_count || selectedListing.user.thumbs_down_count) ? (
                 <div className="flex items-center gap-3 pt-2 border-t border-gray-200 mt-2">
                   <span className="font-bold text-gray-700">Owner Rating:</span>

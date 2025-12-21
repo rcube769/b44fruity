@@ -27,7 +27,6 @@ export default function NewListingPage() {
   const [gettingLocation, setGettingLocation] = useState(false)
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [fruitImage, setFruitImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [expirationDays, setExpirationDays] = useState<number | null>(null)
   const [predicting, setPredicting] = useState(false)
@@ -198,7 +197,6 @@ export default function NewListingPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setFruitImage(file)
     setImagePreview(URL.createObjectURL(file))
     setPredicting(true)
 

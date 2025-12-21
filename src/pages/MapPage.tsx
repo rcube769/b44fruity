@@ -52,13 +52,7 @@ export default function MapPage() {
   const fetchListings = async () => {
     const { data, error } = await supabase
       .from('listings')
-      .select(`
-        *,
-        user:users(
-          thumbs_up_count,
-          thumbs_down_count
-        )
-      `)
+      .select('*')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
 
@@ -80,7 +74,24 @@ export default function MapPage() {
         }
         return true
       })
-      setListings(activeListings)
+
+      // Fetch user ratings for each listing
+      const listingsWithUserData = await Promise.all(
+        activeListings.map(async (listing) => {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('thumbs_up_count, thumbs_down_count')
+            .eq('id', listing.user_id)
+            .single()
+
+          return {
+            ...listing,
+            user: userData
+          }
+        })
+      )
+
+      setListings(listingsWithUserData)
     }
     setLoading(false)
   }

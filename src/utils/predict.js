@@ -47,8 +47,12 @@ export async function predictExpirationDays(imageFile) {
           tensor.dispose()
           prediction.dispose()
 
-          // Scale raw output by 3 and clamp between 1 and 30 days
-          const days = Math.min(30, Math.max(1, Math.round(raw * 3)))
+          // Scale FIRST - multiply by 15 to spread predictions across 1-30 day range
+          const scaled = raw * 15
+          console.log('Scaled value:', scaled)
+
+          // Then round and clamp between 1 and 30 days
+          const days = Math.min(30, Math.max(1, Math.round(scaled)))
 
           console.log('Predicted days:', days)
 

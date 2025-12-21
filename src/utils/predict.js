@@ -82,8 +82,14 @@ export async function predictExpirationDays(imageFile) {
           if (y.dispose) y.dispose()
 
           const result = mapToBucket(predValue)
+          console.log('===== PREDICTION DEBUG =====')
           console.log('RAW MODEL OUTPUT:', predValue)
-          console.log('Stage:', result.stage, 'Days:', result.days)
+          console.log('Normalized value (v):', Number(predValue))
+          console.log('Clamped value:', clamp(Number(predValue), 0, 20))
+          console.log('Freshness score (s):', clamp(Number(predValue), 0, 20) / 20)
+          console.log('Stage:', result.stage)
+          console.log('Days:', result.days)
+          console.log('============================')
 
           // Return just the days for backward compatibility
           resolve(result.days)

@@ -42,7 +42,7 @@ export async function predictExpirationDays(imageFile) {
           console.log('Prediction made:', prediction)
 
           const raw = prediction.dataSync()[0]
-          console.log('Raw model output:', raw)
+          console.log("RAW MODEL OUTPUT:", raw)
 
           tensor.dispose()
           prediction.dispose()

@@ -22,13 +22,13 @@ function mapToBucket(predValue) {
   if (!Number.isFinite(v)) v = 0.005
 
   // 2) Clamp to expected model output range (very small values)
-  // Based on actual outputs: ~0 to ~0.01
-  v = clamp(v, 0, 0.01)
+  // Based on actual outputs: ~0 to ~0.015 (most fresh fruits are 0.005-0.015)
+  v = clamp(v, 0, 0.015)
   console.log('[mapToBucket] After clamp, v =', v)
 
   // 3) Convert to a 0..1 "freshness-ish" score:
   // higher v => "more days left" => more unripe
-  const s = v / 0.01 // 0..1
+  const s = v / 0.015 // 0..1
   console.log('[mapToBucket] Freshness score s =', s)
 
   // 4) Bucket + exact day mapping
@@ -87,8 +87,8 @@ export async function predictExpirationDays(imageFile) {
           console.log('===== PREDICTION DEBUG =====')
           console.log('RAW MODEL OUTPUT:', predValue)
           console.log('Normalized value (v):', Number(predValue))
-          console.log('Clamped value:', clamp(Number(predValue), 0, 0.01))
-          console.log('Freshness score (s):', clamp(Number(predValue), 0, 0.01) / 0.01)
+          console.log('Clamped value:', clamp(Number(predValue), 0, 0.015))
+          console.log('Freshness score (s):', clamp(Number(predValue), 0, 0.015) / 0.015)
           console.log('Stage:', result.stage)
           console.log('Days:', result.days)
           console.log('============================')

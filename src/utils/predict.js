@@ -26,15 +26,15 @@ function mapToBucket(predValue) {
   v = clamp(v, 0, 0.015)
   console.log('[mapToBucket] After clamp, v =', v)
 
-  // 3) Convert to a 0..1 "freshness-ish" score:
-  // higher v => "more days left" => more unripe
+  // 3) Convert to a 0..1 "rottenness" score:
+  // INVERTED: higher v => MORE ROTTEN, lower v => MORE FRESH
   const s = v / 0.015 // 0..1
-  console.log('[mapToBucket] Freshness score s =', s)
+  console.log('[mapToBucket] Rottenness score s =', s)
 
-  // 4) Simple linear mapping to 1-12 days
-  // s = 0.0 → 1 day (most rotten)
-  // s = 1.0 → 12 days (most fresh)
-  const days = Math.round(1 + s * 11) // Maps 0..1 to 1..12
+  // 4) INVERTED linear mapping to 1-12 days
+  // s = 0.0 → 12 days (most fresh, low raw output)
+  // s = 1.0 → 1 day (most rotten, high raw output)
+  const days = Math.round(12 - s * 11) // Maps 0..1 to 12..1 (INVERTED)
 
   // Determine stage based on days
   let stage

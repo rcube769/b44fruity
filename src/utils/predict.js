@@ -24,10 +24,12 @@ function mapToBucket(predValue) {
   // 2) Clamp to expected model output range (very small values)
   // Based on actual outputs: ~0 to ~0.01
   v = clamp(v, 0, 0.01)
+  console.log('[mapToBucket] After clamp, v =', v)
 
   // 3) Convert to a 0..1 "freshness-ish" score:
   // higher v => "more days left" => more unripe
   const s = v / 0.01 // 0..1
+  console.log('[mapToBucket] Freshness score s =', s)
 
   // 4) Bucket + exact day mapping
   if (s >= 0.60) {

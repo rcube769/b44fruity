@@ -158,7 +158,7 @@ export default function NewListingPage() {
       if (uploadedImage) {
         const fileExt = uploadedImage.name.split('.').pop()
         const fileName = `${user.id}-${Date.now()}.${fileExt}`
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('fruit-images')
           .upload(fileName, uploadedImage)
 

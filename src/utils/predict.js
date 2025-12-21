@@ -47,25 +47,21 @@ export async function predictExpirationDays(imageFile) {
           tensor.dispose()
           prediction.dispose()
 
-          // ---- Robust calibration ----
-          // These constants are chosen to stabilize tiny outputs
-          const MIN_RAW = 0.001
-          const MAX_RAW = 0.02
+          // ---- Sigmoid calibration (robust to tiny outputs) ----
+          const MID = 0.01        // center of expected raw outputs
+          const STEEPNESS = 120   // controls spread
           const MIN_DAYS = 2
           const MAX_DAYS = 21
 
-          // Clamp raw value into expected range
-          const clipped = Math.min(MAX_RAW, Math.max(MIN_RAW, raw))
-
-          // Normalize to 0–1
-          const normalized = (clipped - MIN_RAW) / (MAX_RAW - MIN_RAW)
+          // Sigmoid mapping
+          const sigmoid = 1 / (1 + Math.exp(-STEEPNESS * (raw - MID)))
 
           // Map to days
           const days = Math.round(
-            MIN_DAYS + normalized * (MAX_DAYS - MIN_DAYS)
+            MIN_DAYS + sigmoid * (MAX_DAYS - MIN_DAYS)
           )
 
-          console.log({ raw, clipped, normalized, days })
+          console.log({ raw, sigmoid, days })
 
           resolve(days)
         } catch (error) {

@@ -1,77 +1,95 @@
 import * as tf from '@tensorflow/tfjs'
 
-let model = null
+let _modelPromise = null
 
-export async function loadModel() {
-  if (!model) {
+async function getModel() {
+  if (!_modelPromise) {
     console.log('Loading graph model from /model.json...')
-    try {
-      model = await tf.loadGraphModel('/model.json')
-      console.log('Graph model loaded successfully:', model)
-    } catch (error) {
-      console.error('Error loading model:', error)
-      throw error
-    }
+    _modelPromise = tf.loadGraphModel('/model.json')
   }
-  return model
+  return _modelPromise
+}
+
+function clamp(x, lo, hi) {
+  return Math.min(hi, Math.max(lo, x))
+}
+
+// Turn the model's continuous output into 3 classes + exact days.
+// We don't assume your model is perfect; we normalize safely.
+function mapToBucket(predValue) {
+  // 1) Make prediction safe (handle NaN/inf/neg/huge)
+  let v = Number(predValue)
+  if (!Number.isFinite(v)) v = 7
+
+  // 2) Clamp to a reasonable shelf-life window
+  // (adjust if you want; this is just to stabilize)
+  v = clamp(v, 0, 20)
+
+  // 3) Convert to a 0..1 "freshness-ish" score:
+  // higher v => "more days left" => more unripe
+  const s = v / 20 // 0..1
+
+  // 4) Bucket + exact day mapping
+  if (s >= 0.60) {
+    // UNRIPE: exact values 9,10,11,12
+    // map s 0.60..1.00 -> 9..12
+    const t = (s - 0.60) / 0.40 // 0..1
+    const days = 9 + Math.round(t * 3) // 9..12
+    return { stage: 'Unripe', days: clamp(days, 9, 12) }
+  } else if (s >= 0.30) {
+    // RIPE: exact values 5..9
+    // map s 0.30..0.60 -> 5..9
+    const t = (s - 0.30) / 0.30 // 0..1
+    const days = 5 + Math.round(t * 4) // 5..9
+    return { stage: 'Ripe', days: clamp(days, 5, 9) }
+  } else {
+    // ROTTEN: exact values 1..3
+    // map s 0.00..0.30 -> 1..3
+    const t = s / 0.30 // 0..1
+    const days = 1 + Math.round(t * 2) // 1..3
+    return { stage: 'Rotten', days: clamp(days, 1, 3) }
+  }
 }
 
 export async function predictExpirationDays(imageFile) {
   try {
     console.log('Starting prediction for image:', imageFile.name)
-    const model = await loadModel()
+    const model = await getModel()
     console.log('Model loaded for prediction')
 
     const img = new Image()
     img.src = URL.createObjectURL(imageFile)
 
     return new Promise((resolve, reject) => {
-      img.onload = async () => {
+      img.onerror = () => reject(new Error('Could not load image'))
+      img.onload = () => {
         try {
-          console.log('Image loaded:', img.width, 'x', img.height)
+          const x = tf.tidy(() => {
+            // Match MobileNetV2 preprocessing: [-1, 1]
+            return tf.browser
+              .fromPixels(img)
+              .resizeNearestNeighbor([224, 224])
+              .toFloat()
+              .div(127.5)
+              .sub(1)
+              .expandDims(0)
+          })
 
-          const tensor = tf.browser.fromPixels(img)
-            .resizeNearestNeighbor([224, 224])
-            .toFloat()
-            .div(127.5)
-            .sub(1)
-            .expandDims(0)
-          console.log('Tensor created with shape:', tensor.shape)
+          const y = model.predict(x)
+          const predValue = y.dataSync()[0]
 
-          const prediction = model.predict(tensor)
-          console.log('Prediction made:', prediction)
+          x.dispose()
+          if (y.dispose) y.dispose()
 
-          const raw = prediction.dataSync()[0]
-          console.log("RAW MODEL OUTPUT:", raw)
+          const result = mapToBucket(predValue)
+          console.log('RAW MODEL OUTPUT:', predValue)
+          console.log('Stage:', result.stage, 'Days:', result.days)
 
-          tensor.dispose()
-          prediction.dispose()
-
-          // ---- Sigmoid calibration (robust to tiny outputs) ----
-          const MID = 0.01        // center of expected raw outputs
-          const STEEPNESS = 120   // controls spread
-          const MIN_DAYS = 2
-          const MAX_DAYS = 21
-
-          // Sigmoid mapping
-          const sigmoid = 1 / (1 + Math.exp(-STEEPNESS * (raw - MID)))
-
-          // Map to days
-          const days = Math.round(
-            MIN_DAYS + sigmoid * (MAX_DAYS - MIN_DAYS)
-          )
-
-          console.log({ raw, sigmoid, days })
-
-          resolve(days)
-        } catch (error) {
-          console.error('Prediction error:', error)
-          reject(error)
+          // Return just the days for backward compatibility
+          resolve(result.days)
+        } catch (e) {
+          reject(e)
         }
-      }
-
-      img.onerror = () => {
-        reject(new Error('Failed to load image'))
       }
     })
   } catch (error) {

@@ -467,14 +467,24 @@ export default function DashboardPage() {
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {myListings.map((listing) => (
-                  <div key={listing.id} className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 border-2 border-orange-100">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-3xl">🍊</span>
-                        <h3 className="text-xl font-bold text-gray-900">{listing.fruit_type}</h3>
+                  <div key={listing.id} className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden transition-all duration-300 transform hover:-translate-y-1 border-2 border-orange-100">
+                    {listing.image_url && (
+                      <div className="w-full h-48 overflow-hidden bg-gray-100">
+                        <img
+                          src={listing.image_url}
+                          alt={listing.fruit_type}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      {getStatusBadge(listing.status)}
-                    </div>
+                    )}
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-3xl">🍊</span>
+                          <h3 className="text-xl font-bold text-gray-900">{listing.fruit_type}</h3>
+                        </div>
+                        {getStatusBadge(listing.status)}
+                      </div>
                     <div className="space-y-2 mb-4">
                       <p className="text-gray-700 flex items-center gap-2">
                         <span className="font-semibold text-orange-600">📦 Quantity:</span> {listing.quantity}
@@ -503,12 +513,13 @@ export default function DashboardPage() {
                         return null
                       })()}
                     </div>
-                    <button
-                      onClick={() => deleteListing(listing.id)}
-                      className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all"
-                    >
-                      🗑️ Delete Listing
-                    </button>
+                      <button
+                        onClick={() => deleteListing(listing.id)}
+                        className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all"
+                      >
+                        🗑️ Delete Listing
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

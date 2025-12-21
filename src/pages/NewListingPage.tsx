@@ -28,6 +28,7 @@ export default function NewListingPage() {
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null)
   const [expirationDays, setExpirationDays] = useState<number | null>(null)
   const [predicting, setPredicting] = useState(false)
   const [formData, setFormData] = useState({
@@ -152,6 +153,27 @@ export default function NewListingPage() {
 
       const { lat, lon } = geocodeData[0]
 
+      // Upload image to Supabase Storage if present
+      let imageUrl = null
+      if (uploadedImage) {
+        const fileExt = uploadedImage.name.split('.').pop()
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('fruit-images')
+          .upload(fileName, uploadedImage)
+
+        if (uploadError) {
+          console.error('Image upload error:', uploadError)
+          toast.error('Failed to upload image')
+        } else {
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('fruit-images')
+            .getPublicUrl(fileName)
+          imageUrl = publicUrl
+        }
+      }
+
       // Calculate expiration date if prediction was made
       let expirationDate = null
       if (expirationDays !== null) {
@@ -166,6 +188,7 @@ export default function NewListingPage() {
         fruit_type: formData.fruitType,
         quantity: formData.quantity,
         description: formData.description || null,
+        image_url: imageUrl,
         approximate_lat: parseFloat(lat),
         approximate_lng: parseFloat(lon),
         latitude: parseFloat(lat),
@@ -206,6 +229,7 @@ export default function NewListingPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    setUploadedImage(file)
     setImagePreview(URL.createObjectURL(file))
     setPredicting(true)
 

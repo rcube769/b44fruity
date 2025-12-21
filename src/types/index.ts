@@ -13,6 +13,7 @@ export interface Listing {
   fruit_type: string
   quantity: string
   description?: string
+  image_url?: string
   latitude: number
   longitude: number
   city: string
